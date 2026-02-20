@@ -19,9 +19,17 @@ local AequorUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/hnwi
 - `ColorPicker` — full HSV color picker panel with Done / Cancel
 - `Button` — clickable action button with animated glow flash and arrow indicator
 - `AddContainer` — hover-animated styled container row
-**Themes** — 8 built-in themes: `Aqua` `Violet` `Smoke` `Scarlet` `Lemon` `Light` `Rose` `Custom`. Full custom theme support with gradient, text, boundary and glow color control.
-**Decorations** — Image decorations rendered on window edges. Fully configurable position, size, rotation, transparency and tint color.
-**Icon Manager** — 9 built-in icons. Add your own custom icons via `AddCustomIcon`.
+**Themes** — 8 built-in themes: `Aqua` `Violet` `Smoke` `Scarlet` `Lemon` `Light` `Rose` `Custom`
+
+Full custom theme support with gradient, text, boundary and glow color control.
+
+**Decorations** — Image decorations rendered on window edges.
+
+Fully configurable position, size, rotation, transparency and tint color.
+
+**Icon Manager** — 9 built-in icons.
+
+Add your own custom icons via `AddCustomIcon`.
 ---
 ## Quick Example
 ```lua
