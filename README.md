@@ -23,11 +23,11 @@ local AequorUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/hnwi
 
 Full custom theme support with gradient, text, boundary and glow color control.
 
-**Decorations** — Image decorations rendered on window edges.
+**Custom Decorations** — Image decorations rendered on window edges.
 
 Fully configurable position, size, rotation, transparency and tint color.
 
-**Icon Manager** — 9 built-in icons.
+**Icon Manager** — 9 built-in icons and Custom Icon support.
 
 Add your own custom icons via `AddCustomIcon`.
 ---
