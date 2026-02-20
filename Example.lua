@@ -13,10 +13,28 @@
     │ IconManager     │ Controls tab icons                           │
     │ AddContainer    │ Creates a styled hover-animated container     │
     └─────────────────┴──────────────────────────────────────────────┘
+
+    ELEMENT API OVERVIEW:
+    Every element now returns an API table instead of a raw Frame.
+
+    ┌───────────────┬───────────┬───────────────┬────────────────────┐
+    │ Element       │ .Frame    │ .Value        │ :SetValue()        │
+    ├───────────────┼───────────┼───────────────┼────────────────────┤
+    │ CreateButton  │ ✓ Frame   │ —             │ —                  │
+    │ CreateToggle  │ ✓ Frame   │ bool          │ SetValue(bool)     │
+    │ CreateSlider  │ ✓ Frame   │ number        │ SetValue(number)   │
+    │ CreateDropdown│ ✓ Frame   │ string        │ SetValue(string)   │
+    │ CreateColorPicker│ ✓ Frame│ Color3        │ SetValue(Color3)   │
+    │ CreateParagraph  │ ✓ Frame│ —             │ —                  │
+    │ CreateClipboard  │ ✓ Frame│ —             │ —                  │
+    └───────────────┴───────────┴───────────────┴────────────────────┘
+
+    All elements (except Paragraph and Clipboard) also have:
+      :OnChanged(callback)  → registers an additional callback
 ]]
 
 local AequorUI = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/hnwiie/UI/refs/heads/main/main.lua", true
+    "https://raw.githubusercontent.com/hnwiie/AequorUI/refs/heads/main/main.lua", true
 ))()
 
 local Players     = game:GetService("Players")
@@ -74,7 +92,7 @@ local myTabs = AequorUI.TabManager:Init(mainFrame)
                               "Home"     "Settings"  "Search"
                               "Target"   "Combat"    "Movement"
                               "Eyes"     "Human"     "Humans"
-                            (you can also use custom icon keys, see Section 5b)
+                            (you can also use custom icon keys, see Section 6b)
     layoutOrder → number  — position in the sidebar. 1 = top, 2 = second, etc.
 
     Returns → tabButton, container
@@ -94,43 +112,104 @@ local tab4, container4 = myTabs:CreateTab("Profile",  "Human",    4)
 --  SECTION 3 — ELEMENTS  (ElementManager)
 -- ════════════════════════════════════════════════════════════════
 
--- ─── 3a. PARAGRAPH ──────────────────────────────────────────────────────────
+-- ─── 3a. BUTTON ─────────────────────────────────────────────────────────────
+--[[
+    A clickable button with a title, description, animated glow effect,
+    and an arrow indicator. Fires callback() when clicked.
+
+    ElementManager:CreateButton(container, title, description, callback)
+    ElementManager:CreateButton(container, title, description, callback, config)
+
+    config (optional table):
+      GlowColor → Color3 — glow flash color on click   (default: theme SelectionColor)
+      IconColor → Color3 — arrow ">" icon color         (default: white)
+
+    Returns → API table:
+      api.Frame             → the TextButton instance
+      api:OnChanged(cb)     → registers an additional callback fired on each click
+                              (useful for adding multiple listeners after creation)
+
+    Note: There is no SetValue or .Value for Button — it has no state.
+          Use :OnChanged() to register additional click listeners.
+]]
+
+-- Default style:
+local myButton = AequorUI.ElementManager:CreateButton(container1,
+    "Teleport to Spawn",
+    "Click to teleport your character to the spawn point.",
+    function()
+        print("Button clicked!")
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = CFrame.new(0, 5, 0)
+        end
+    end
+)
+
+-- Access the underlying Frame:
+-- myButton.Frame.Visible = false
+
+-- Register an extra listener after creation:
+myButton:OnChanged(function()
+    print("Another listener also fired!")
+end)
+
+-- Custom glow + icon color:
+AequorUI.ElementManager:CreateButton(container1,
+    "Kill All",
+    "Eliminates all players in the server.",
+    function()
+        print("Kill All clicked!")
+    end,
+    {
+        GlowColor = Color3.fromRGB(255, 50, 50),
+        IconColor = Color3.fromRGB(255, 120, 120),
+    }
+)
+
+
+-- ─── 3b. PARAGRAPH ──────────────────────────────────────────────────────────
 --[[
     A read-only display box with a title and a description.
     Height adjusts automatically based on description length.
-    No callback. No config options.
 
     ElementManager:CreateParagraph(container, title, description)
 
-    Returns → Frame
+    Returns → API table:
+      api.Frame → the Frame instance
+    No callback, no config options, no SetValue.
 ]]
 
-AequorUI.ElementManager:CreateParagraph(container1,
+local myParagraph = AequorUI.ElementManager:CreateParagraph(container1,
     "Welcome to AequorUI",
     "This is a paragraph element. Use it for announcements, patch notes, " ..
     "or any long-form text. The frame height adjusts automatically."
 )
 
+-- Access the frame if needed:
+-- myParagraph.Frame.Visible = false
 
--- ─── 3b. CLIPBOARD ──────────────────────────────────────────────────────────
+
+-- ─── 3c. CLIPBOARD ──────────────────────────────────────────────────────────
 --[[
     A clickable button that copies a string to the user's clipboard.
     Requires the executor to support setclipboard().
-    No config options.
 
     ElementManager:CreateClipboard(container, title, description, textToCopy)
 
-    Returns → TextButton
+    Returns → API table:
+      api.Frame → the TextButton instance
+    No callback, no config options, no SetValue.
 ]]
 
-AequorUI.ElementManager:CreateClipboard(container1,
+local myClipboard = AequorUI.ElementManager:CreateClipboard(container1,
     "Discord Invite",
     "Click to copy the Discord server link to your clipboard.",
     "https://discord.gg/example"
 )
 
 
--- ─── 3c. TOGGLE ─────────────────────────────────────────────────────────────
+-- ─── 3d. TOGGLE ─────────────────────────────────────────────────────────────
 --[[
     An on/off switch. Fires callback(state) where state is true or false.
 
@@ -142,11 +221,16 @@ AequorUI.ElementManager:CreateClipboard(container1,
       OffColor → Color3 — toggle background color when OFF (default: grey)
       DotColor → Color3 — the sliding dot color            (default: white)
 
-    Returns → Frame
+    Returns → API table:
+      api.Frame             → the Frame instance
+      api.Value             → current boolean state (true/false)
+      api:SetValue(bool)    → programmatically set the toggle on or off,
+                              updates the visual AND fires all callbacks
+      api:OnChanged(cb)     → registers an additional callback(state)
 ]]
 
 -- Default style:
-AequorUI.ElementManager:CreateToggle(container1,
+local aimbotToggle = AequorUI.ElementManager:CreateToggle(container1,
     "Aimbot",
     "Enables automatic target tracking.",
     function(state)
@@ -154,8 +238,19 @@ AequorUI.ElementManager:CreateToggle(container1,
     end
 )
 
+-- Read current value:
+print("Aimbot is currently:", aimbotToggle.Value)
+
+-- Programmatically turn it on:
+aimbotToggle:SetValue(true)
+
+-- Register an extra listener:
+aimbotToggle:OnChanged(function(state)
+    print("Aimbot changed (extra listener):", state)
+end)
+
 -- Custom colors:
-AequorUI.ElementManager:CreateToggle(container1,
+local espToggle = AequorUI.ElementManager:CreateToggle(container1,
     "ESP",
     "Shows player outlines through walls.",
     function(state)
@@ -168,28 +263,32 @@ AequorUI.ElementManager:CreateToggle(container1,
     }
 )
 
+-- Programmatically turn ESP off without user interaction:
+-- espToggle:SetValue(false)
 
--- ─── 3d. SLIDER ─────────────────────────────────────────────────────────────
+
+-- ─── 3e. SLIDER ─────────────────────────────────────────────────────────────
 --[[
     A draggable slider that returns integer values. Fires callback(value).
 
     ElementManager:CreateSlider(container, title, description, min, max, default, callback)
     ElementManager:CreateSlider(container, title, description, min, max, default, callback, config)
 
-    min     → number — minimum value
-    max     → number — maximum value
-    default → number — starting value (clamped between min and max)
-
     config (optional table):
       TrackColor → Color3 — the full background track color   (default: dark grey)
       FillColor  → Color3 — the filled/active portion color   (default: theme SelectionColor)
       DotColor   → Color3 — the draggable handle dot color    (default: white)
 
-    Returns → Frame
+    Returns → API table:
+      api.Frame             → the Frame instance
+      api.Value             → current number value
+      api:SetValue(number)  → programmatically set the slider to a value,
+                              clamps to [min, max], updates the visual AND fires all callbacks
+      api:OnChanged(cb)     → registers an additional callback(value)
 ]]
 
 -- Default style:
-AequorUI.ElementManager:CreateSlider(container1,
+local speedSlider = AequorUI.ElementManager:CreateSlider(container1,
     "Walk Speed",
     "Adjusts the character's walk speed.",
     0, 500, 16,
@@ -200,8 +299,19 @@ AequorUI.ElementManager:CreateSlider(container1,
     end
 )
 
+-- Read current value:
+print("Current speed:", speedSlider.Value)
+
+-- Programmatically reset to default:
+speedSlider:SetValue(16)
+
+-- Register an extra listener:
+speedSlider:OnChanged(function(value)
+    print("Speed changed (extra listener):", value)
+end)
+
 -- Custom colors:
-AequorUI.ElementManager:CreateSlider(container1,
+local jumpSlider = AequorUI.ElementManager:CreateSlider(container1,
     "Jump Power",
     "Adjusts the character's jump height.",
     0, 500, 50,
@@ -218,7 +328,7 @@ AequorUI.ElementManager:CreateSlider(container1,
 )
 
 
--- ─── 3e. DROPDOWN ───────────────────────────────────────────────────────────
+-- ─── 3f. DROPDOWN ───────────────────────────────────────────────────────────
 --[[
     A clickable dropdown menu. Fires callback(selected) with the chosen string.
     The dropdown panel opens centered on the button and closes on selection
@@ -236,11 +346,17 @@ AequorUI.ElementManager:CreateSlider(container1,
       GlowColor         → Color3 — the glow highlight on the active option
                                    (default: white)
 
-    Returns → Frame
+    Returns → API table:
+      api.Frame             → the Frame instance
+      api.Value             → currently selected option string
+      api:SetValue(string)  → programmatically select an option,
+                              updates the visual AND fires all callbacks.
+                              Does nothing if the value is not in the options list.
+      api:OnChanged(cb)     → registers an additional callback(selected)
 ]]
 
 -- Default style:
-AequorUI.ElementManager:CreateDropdown(container1,
+local themeDropdown = AequorUI.ElementManager:CreateDropdown(container1,
     "Theme",
     "Switch the UI theme.",
     {"Aqua", "Violet", "Smoke", "Scarlet", "Lemon", "Light", "Rose"},
@@ -251,8 +367,19 @@ AequorUI.ElementManager:CreateDropdown(container1,
     end
 )
 
+-- Read current value:
+print("Current theme:", themeDropdown.Value)
+
+-- Programmatically switch theme:
+themeDropdown:SetValue("Violet")
+
+-- Register an extra listener:
+themeDropdown:OnChanged(function(selected)
+    print("Theme changed (extra listener):", selected)
+end)
+
 -- Custom colors:
-AequorUI.ElementManager:CreateDropdown(container1,
+local weaponDropdown = AequorUI.ElementManager:CreateDropdown(container1,
     "Weapon",
     "Select your active weapon.",
     {"Sword", "Bow", "Staff", "Dagger", "Axe"},
@@ -266,8 +393,11 @@ AequorUI.ElementManager:CreateDropdown(container1,
     }
 )
 
+-- Programmatically switch weapon:
+-- weaponDropdown:SetValue("Bow")
 
--- ─── 3f. COLOR PICKER ───────────────────────────────────────────────────────
+
+-- ─── 3g. COLOR PICKER ───────────────────────────────────────────────────────
 --[[
     A full HSV color picker panel. Opens when the preview box is clicked.
     Has Done and Cancel buttons.
@@ -275,14 +405,20 @@ AequorUI.ElementManager:CreateDropdown(container1,
 
     ElementManager:CreateColorPicker(container, title, description, defaultColor, callback)
 
-    defaultColor → Color3    — the starting color shown in the preview box
-    callback     → function(Color3) — receives the chosen color on Done
+    defaultColor → Color3             — the starting color shown in the preview box
+    callback     → function(Color3)   — receives the chosen color when Done is pressed
 
-    Returns → Frame
+    Returns → API table:
+      api.Frame             → the Frame instance
+      api.Value             → current confirmed Color3
+      api:SetValue(Color3)  → programmatically set the color,
+                              updates the preview box AND fires all callbacks
+      api:OnChanged(cb)     → registers an additional callback(Color3)
+
     No config options — the panel style follows the active theme automatically.
 ]]
 
-AequorUI.ElementManager:CreateColorPicker(container1,
+local espColor = AequorUI.ElementManager:CreateColorPicker(container1,
     "ESP Color",
     "Choose the color for player ESP boxes.",
     Color3.fromRGB(255, 0, 0),
@@ -290,6 +426,17 @@ AequorUI.ElementManager:CreateColorPicker(container1,
         print("ESP Color:", color)
     end
 )
+
+-- Read current value:
+print("Current ESP color:", espColor.Value)
+
+-- Programmatically set color (e.g. load from saved config):
+espColor:SetValue(Color3.fromRGB(0, 255, 128))
+
+-- Register an extra listener:
+espColor:OnChanged(function(color)
+    print("ESP Color changed (extra listener):", color)
+end)
 
 AequorUI.ElementManager:CreateColorPicker(container1,
     "Chams Color",
@@ -301,7 +448,7 @@ AequorUI.ElementManager:CreateColorPicker(container1,
 )
 
 
--- ─── 3g. ADD CONTAINER ──────────────────────────────────────────────────────
+-- ─── 3h. ADD CONTAINER ──────────────────────────────────────────────────────
 --[[
     A plain styled frame with a title and a description.
     Has a built-in smooth hover animation (transparency shift + cursor change).
@@ -309,7 +456,7 @@ AequorUI.ElementManager:CreateColorPicker(container1,
 
     AequorUI.AddContainer(container, title, description)
 
-    Returns → Frame  (you can add children to it if needed)
+    Returns → Frame  (raw Frame, not an API table — you can parent extra instances to it)
 ]]
 
 local myRow = AequorUI.AddContainer(container1,
@@ -376,7 +523,6 @@ AequorUI.ThemeManager.Themes["Midnight"] = {
     CustomDecorations    = {},
 }
 
--- Apply your custom theme:
 AequorUI.ThemeManager:SetTheme("Midnight", mainFrame)
 
 
@@ -401,7 +547,6 @@ AequorUI.ThemeManager:SetTheme("Midnight", mainFrame)
           because they are instantiated during window creation.
 ]]
 
--- Modify an existing decoration:
 AequorUI.ThemeManager.Decorations["LeftWing"] = {
     AssetId      = "rbxassetid://128923622323769",
     Position     = UDim2.new(0, -120, 0.5, -60),
@@ -412,7 +557,6 @@ AequorUI.ThemeManager.Decorations["LeftWing"] = {
     Color        = Color3.fromRGB(180, 140, 255),
 }
 
--- Add a completely new decoration:
 AequorUI.ThemeManager.Decorations["TopGlow"] = {
     AssetId      = "rbxassetid://128923622323769",
     Position     = UDim2.new(0.5, -75, 0, -40),
@@ -423,7 +567,6 @@ AequorUI.ThemeManager.Decorations["TopGlow"] = {
     Color        = Color3.fromRGB(100, 200, 255),
 }
 
--- Include all decorations in your custom theme:
 AequorUI.ThemeManager.Themes["Midnight"].CustomDecorations = AequorUI.ThemeManager.Decorations
 
 
@@ -544,9 +687,6 @@ print("Aqua gradient start:", aquaTheme.GradientStart)
     new icons created after this call.
 
     IconManager:SetIconColor(Color3, {iconObjects})
-
-    Pass the Icon child of each tab button.
-    You get it via: tabButton:WaitForChild("Icon")
 ]]
 
 AequorUI.IconManager:SetIconColor(
@@ -607,13 +747,13 @@ AequorUI.IconManager.DefaultIconColor = Color3.fromRGB(200, 200, 200)
 -- ════════════════════════════════════════════════════════════════
 --  SECTION 6 — FULL SETUP EXAMPLE
 -- ════════════════════════════════════════════════════════════════
--- Below is a minimal but complete real-world usage example
--- showing the recommended setup order.
+-- A minimal but complete real-world example showing recommended
+-- setup order, including the new API (SetValue, OnChanged, Value).
 
 --[[
 
 local AequorUI = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/hnwiie/UI/refs/heads/main/main.lua", true
+    "https://raw.githubusercontent.com/hnwiie/AequorUI/refs/heads/main/main.lua", true
 ))()
 
 -- 1. Create window
@@ -627,15 +767,44 @@ local tab1, container1 = myTabs:CreateTab("Home",   "Home",   1)
 local tab2, container2 = myTabs:CreateTab("Combat", "Combat", 2)
 
 -- 3. Add elements
-AequorUI.ElementManager:CreateToggle(container1, "Aimbot", "Enable aimbot.", function(state)
+
+-- Button
+local myBtn = AequorUI.ElementManager:CreateButton(container1, "Rejoin", "Rejoins the server.", function()
+    game:GetService("TeleportService"):Teleport(game.PlaceId)
+end)
+myBtn:OnChanged(function() print("Also fired!") end)
+
+-- Toggle with SetValue (e.g. load saved config)
+local aimbotToggle = AequorUI.ElementManager:CreateToggle(container1, "Aimbot", "Enable aimbot.", function(state)
     print("Aimbot:", state)
 end)
+aimbotToggle:SetValue(true)   -- turn on at startup
+aimbotToggle:OnChanged(function(state) print("Extra listener:", state) end)
 
-AequorUI.ElementManager:CreateSlider(container1, "FOV", "Set FOV size.", 1, 360, 90, function(val)
+-- Slider with SetValue
+local fovSlider = AequorUI.ElementManager:CreateSlider(container1, "FOV", "Set FOV size.", 1, 360, 90, function(val)
     print("FOV:", val)
 end)
+fovSlider:SetValue(120)
+print("FOV is:", fovSlider.Value)
 
--- 4. Apply theme and component colors
+-- Dropdown with SetValue
+local modeDropdown = AequorUI.ElementManager:CreateDropdown(container1, "Mode", "Select mode.",
+    {"Silent", "Legit", "Rage"}, "Legit", function(sel)
+    print("Mode:", sel)
+end)
+modeDropdown:SetValue("Rage")
+print("Mode is:", modeDropdown.Value)
+
+-- Color picker with SetValue
+local espColor = AequorUI.ElementManager:CreateColorPicker(container1, "ESP Color", "Pick ESP color.",
+    Color3.fromRGB(255, 0, 0), function(color)
+    print("Color:", color)
+end)
+espColor:SetValue(Color3.fromRGB(0, 255, 0))  -- load green from saved config
+print("Color is:", espColor.Value)
+
+-- 4. Apply theme
 AequorUI.ThemeManager:SetTheme("Aqua", mainFrame)
 AequorUI.ThemeManager:SetTransparency(0.3, mainFrame)
 AequorUI.ThemeManager:SetAcrylic(false, screenGui)
