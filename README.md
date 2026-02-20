@@ -1,4 +1,4 @@
-![AequorUI Banner](AequorUI/Assets/banner.png)
+![AequorUI Banner](Assets/banner.png)
 
 # AequorUI
 
