@@ -2,7 +2,7 @@
 
 # AequorUI
 
-A lightweight, executor-compatible UI library for Roblox. Designed for low-end executors — no `require()`, no ModuleScripts, just a single `loadstring` call.
+A modern and clean Roblox UI library that works stably even with weak executors and bypasses powerful anti-cheats.
 
 ---
 
