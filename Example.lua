@@ -1,511 +1,441 @@
--- ╔═══════════════════════════════════════════════════════════════╗
--- ║                   AequorUI — Example.lua                      ║
--- ║         Complete API reference — every feature explained      ║
--- ╚═══════════════════════════════════════════════════════════════╝
+-- ╔══════════════════════════════════════════════════════════════╗
+-- ║              AequorUI — Full Documented Example              ║
+-- ╚══════════════════════════════════════════════════════════════╝
 
 --[[
-    MODULES AVAILABLE AFTER LOADING:
-    ┌─────────────────┬──────────────────────────────────────────────┐
-    │ GeneralUI       │ Creates the main window                      │
-    │ TabManager      │ Creates and manages sidebar tabs             │
-    │ ElementManager  │ Creates all UI elements                      │
-    │ ThemeManager    │ Controls colors, themes, decorations         │
-    │ IconManager     │ Controls tab icons                           │
-    │ AddContainer    │ Creates a styled hover-animated container     │
-    └─────────────────┴──────────────────────────────────────────────┘
+  MODULES returned after loading:
+    AequorUI.GeneralUI       → creates the main window
+    AequorUI.TabManager      → sidebar tabs
+    AequorUI.ElementManager  → all UI elements
+    AequorUI.ThemeManager    → themes, colors, transparency
+    AequorUI.IconManager     → tab icons
+    AequorUI.AddContainer    → plain hover-animated container
 
-    ELEMENT API OVERVIEW:
-    Every element now returns an API table instead of a raw Frame.
-
-    ┌───────────────┬───────────┬───────────────┬────────────────────┐
-    │ Element       │ .Frame    │ .Value        │ :SetValue()        │
-    ├───────────────┼───────────┼───────────────┼────────────────────┤
-    │ CreateButton  │ ✓ Frame   │ —             │ —                  │
-    │ CreateToggle  │ ✓ Frame   │ bool          │ SetValue(bool)     │
-    │ CreateSlider  │ ✓ Frame   │ number        │ SetValue(number)   │
-    │ CreateDropdown│ ✓ Frame   │ string        │ SetValue(string)   │
-    │ CreateColorPicker│ ✓ Frame│ Color3        │ SetValue(Color3)   │
-    │ CreateParagraph  │ ✓ Frame│ —             │ —                  │
-    │ CreateClipboard  │ ✓ Frame│ —             │ —                  │
-    └───────────────┴───────────┴───────────────┴────────────────────┘
-
-    All elements (except Paragraph and Clipboard) also have:
-      :OnChanged(callback)  → registers an additional callback
+  ELEMENT API — every element returns a table, not a raw Frame:
+    .Frame          → the actual Roblox Instance
+    .Value          → current value (Toggle=bool, Slider=number, Dropdown=string, ColorPicker=Color3)
+    :SetValue(v)    → set value programmatically, updates visual + fires all callbacks
+    :OnChanged(fn)  → register an extra callback (can call multiple times)
+    Button / Paragraph / Clipboard have no .Value or :SetValue()
 ]]
+
+
+-- ══════════════════════════════════════════
+--  LOAD
+-- ══════════════════════════════════════════
 
 local AequorUI = loadstring(game:HttpGet(
     "https://raw.githubusercontent.com/hnwiie/AequorUI/refs/heads/main/main.lua", true
 ))()
 
-local Players     = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 
-
--- ════════════════════════════════════════════════════════════════
---  SECTION 1 — MAIN WINDOW  (GeneralUI)
--- ════════════════════════════════════════════════════════════════
+-- ══════════════════════════════════════════
+--  MAIN WINDOW  —  GeneralUI:CreateMain()
+-- ══════════════════════════════════════════
 
 --[[
-    GeneralUI:CreateMain(toggleKey, themeName)
+  GeneralUI:CreateMain(toggleKey, themeName)
+    toggleKey → Enum.KeyCode — key to show/hide the window
+    themeName → string       — starting theme:
+                "Aqua" | "Violet" | "Smoke" | "Scarlet"
+                "Lemon" | "Light" | "Rose"  | "Custom"
+  Returns → ScreenGui
 
-    toggleKey  → Enum.KeyCode  — the key that shows/hides the UI window
-    themeName  → string        — the starting theme to apply
-                                 built-in themes:
-                                   "Aqua"    — teal/cyan
-                                   "Violet"  — purple
-                                   "Smoke"   — dark grey
-                                   "Scarlet" — deep red
-                                   "Lemon"   — yellow-gold
-                                   "Light"   — white/light grey
-                                   "Rose"    — pink
-                                   "Custom"  — base for custom themes
-
-    Returns → ScreenGui
+  NOTE: Define ThemeManager.Decorations BEFORE this call.
+        Decorations are baked in during window creation.
 ]]
 
-local screenGui = AequorUI.GeneralUI:CreateMain(Enum.KeyCode.RightBracket, "Aqua")
+local screenGui = AequorUI.GeneralUI:CreateMain(Enum.KeyCode.L, "Aqua")
 local mainFrame = screenGui:WaitForChild("MainFrame")
 local divider   = mainFrame:WaitForChild("Divider")
 
 
--- ════════════════════════════════════════════════════════════════
---  SECTION 2 — TABS  (TabManager)
--- ════════════════════════════════════════════════════════════════
+-- ══════════════════════════════════════════
+--  TABS  —  TabManager
+-- ══════════════════════════════════════════
 
 --[[
-    TabManager:Init(mainFrame)
-    Must be called once before creating any tabs.
-    Returns → myTabs (tab controller object)
+  TabManager:Init(mainFrame)
+    Call once before creating tabs. Returns → myTabs object.
 
-    myTabs properties you can use later:
-      myTabs.SelectionBar  → the small bar that slides to the active tab
-      myTabs.BoundaryLine  → the vertical divider line between sidebar and content
+  myTabs properties:
+    .SelectionBar → sliding bar that follows the active tab
+    .BoundaryLine → vertical divider between sidebar and content
+
+  myTabs:CreateTab(name, iconName, layoutOrder)
+    name        → sidebar label
+    iconName    → built-in keys: "Home" | "Settings" | "Search" | "Target"
+                                 "Combat" | "Movement" | "Eyes" | "Human" | "Humans"
+                  custom keys also work — see IconManager:AddCustomIcon()
+    layoutOrder → position in sidebar (1 = top)
+    Returns → tabButton, container
+      tabButton:WaitForChild("Icon") → ImageLabel
+      tabButton:WaitForChild("Glow") → glow frame behind active tab
+      container → ScrollingFrame where elements go
 ]]
 
 local myTabs = AequorUI.TabManager:Init(mainFrame)
 
---[[
-    myTabs:CreateTab(name, iconName, layoutOrder)
-
-    name        → string  — label text shown in the sidebar
-    iconName    → string  — icon key. built-in keys:
-                              "Home"     "Settings"  "Search"
-                              "Target"   "Combat"    "Movement"
-                              "Eyes"     "Human"     "Humans"
-                            (you can also use custom icon keys, see Section 6b)
-    layoutOrder → number  — position in the sidebar. 1 = top, 2 = second, etc.
-
-    Returns → tabButton, container
-      tabButton  → the clickable TextButton in the sidebar
-                   children: tabButton:WaitForChild("Icon") → ImageLabel
-                              tabButton:WaitForChild("Glow") → Frame
-      container  → ScrollingFrame where you add your elements
-]]
-
 local tab1, container1 = myTabs:CreateTab("Home",     "Home",     1)
-local tab2, container2 = myTabs:CreateTab("Combat",   "Combat",   2)
-local tab3, container3 = myTabs:CreateTab("Settings", "Settings", 3)
+local tab2, container2 = myTabs:CreateTab("Settings", "Settings", 2)
+local tab3, container3 = myTabs:CreateTab("Store",    "Search",   3)
 local tab4, container4 = myTabs:CreateTab("Profile",  "Human",    4)
 
 
--- ════════════════════════════════════════════════════════════════
---  SECTION 3 — ELEMENTS  (ElementManager)
--- ════════════════════════════════════════════════════════════════
+-- ══════════════════════════════════════════
+--  ELEMENTS  —  ElementManager
+-- ══════════════════════════════════════════
 
--- ─── 3a. BUTTON ─────────────────────────────────────────────────────────────
+-- ── PARAGRAPH ──────────────────────────────────────────────────────
 --[[
-    A clickable button with a title, description, animated glow effect,
-    and an arrow indicator. Fires callback() when clicked.
+  Read-only info box. Height auto-adjusts to text length.
+  No callback, no config, no SetValue.
 
-    ElementManager:CreateButton(container, title, description, callback)
-    ElementManager:CreateButton(container, title, description, callback, config)
-
-    config (optional table):
-      GlowColor → Color3 — glow flash color on click   (default: theme SelectionColor)
-      IconColor → Color3 — arrow ">" icon color         (default: white)
-
-    Returns → API table:
-      api.Frame             → the TextButton instance
-      api:OnChanged(cb)     → registers an additional callback fired on each click
-                              (useful for adding multiple listeners after creation)
-
-    Note: There is no SetValue or .Value for Button — it has no state.
-          Use :OnChanged() to register additional click listeners.
+  ElementManager:CreateParagraph(container, title, description)
+  Returns → { Frame }
 ]]
 
--- Default style:
-local myButton = AequorUI.ElementManager:CreateButton(container1,
-    "Teleport to Spawn",
-    "Click to teleport your character to the spawn point.",
-    function()
-        print("Button clicked!")
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.CFrame = CFrame.new(0, 5, 0)
-        end
-    end
+AequorUI.ElementManager:CreateParagraph(container1,
+    "Script News",
+    "Welcome to AequorUI. You can test all elements below."
 )
 
--- Access the underlying Frame:
--- myButton.Frame.Visible = false
+AequorUI.ElementManager:CreateParagraph(container4,
+    "Account Info",
+    "Manage your profile settings from here."
+)
 
--- Register an extra listener after creation:
-myButton:OnChanged(function()
-    print("Another listener also fired!")
+
+-- ── CLIPBOARD ──────────────────────────────────────────────────────
+--[[
+  Copies a string to clipboard on click.
+  Requires executor setclipboard() support.
+  No callback, no config, no SetValue.
+
+  ElementManager:CreateClipboard(container, title, description, textToCopy)
+  Returns → { Frame }
+]]
+
+AequorUI.ElementManager:CreateClipboard(container1,
+    "Discord Link",
+    "Click to copy.",
+    "https://discord.gg/aequor"
+)
+
+AequorUI.ElementManager:CreateClipboard(container3,
+    "Discount Code",
+    "Copy and use the code.",
+    "AEQUOR2025"
+)
+
+
+-- ── BUTTON ─────────────────────────────────────────────────────────
+--[[
+  Clickable button. Fires callback() on click.
+
+  ElementManager:CreateButton(container, title, description, callback)
+  ElementManager:CreateButton(container, title, description, callback, config)
+
+  config (optional):
+    GlowColor → Color3 — glow on click        (default: theme SelectionColor)
+    IconColor → Color3 — arrow ">" color      (default: white)
+
+  Returns → { Frame, :OnChanged(fn) }
+  No .Value or :SetValue() — use :OnChanged() for extra click listeners.
+]]
+
+-- default
+AequorUI.ElementManager:CreateButton(container1,
+    "Teleport",
+    "Teleport to spawn.",
+    function() print("Teleport!") end
+)
+
+-- custom glow
+AequorUI.ElementManager:CreateButton(container1,
+    "Kill Aura",
+    "Affect everyone nearby.",
+    function() print("Kill Aura!") end,
+    { GlowColor = Color3.fromRGB(255, 60, 60), IconColor = Color3.fromRGB(255, 180, 180) }
+)
+
+AequorUI.ElementManager:CreateButton(container1,
+    "Collect Coins",
+    "Collect all coins on the map.",
+    function() print("Coins!") end,
+    { GlowColor = Color3.fromRGB(255, 210, 0), IconColor = Color3.fromRGB(255, 240, 150) }
+)
+
+-- :OnChanged() — register an extra listener after creation
+local resetBtn = AequorUI.ElementManager:CreateButton(container2,
+    "Reset Settings",
+    "Reset all settings to default.",
+    function() print("Reset!") end,
+    { GlowColor = Color3.fromRGB(255, 80, 80), IconColor = Color3.fromRGB(255, 200, 200) }
+)
+resetBtn:OnChanged(function()
+    print("Extra reset listener fired!")
 end)
 
--- Custom glow + icon color:
-AequorUI.ElementManager:CreateButton(container1,
-    "Kill All",
-    "Eliminates all players in the server.",
-    function()
-        print("Kill All clicked!")
-    end,
-    {
-        GlowColor = Color3.fromRGB(255, 50, 50),
-        IconColor = Color3.fromRGB(255, 120, 120),
-    }
+AequorUI.ElementManager:CreateButton(container3,
+    "Buy Now",
+    "Purchase the premium pack.",
+    function() print("Buy!") end,
+    { GlowColor = Color3.fromRGB(80, 220, 120), IconColor = Color3.fromRGB(180, 255, 200) }
+)
+
+AequorUI.ElementManager:CreateButton(container4,
+    "Logout",
+    "Sign out of your account.",
+    function() print("Logout!") end,
+    { GlowColor = Color3.fromRGB(200, 60, 60), IconColor = Color3.fromRGB(255, 180, 180) }
 )
 
 
--- ─── 3b. PARAGRAPH ──────────────────────────────────────────────────────────
+-- ── TOGGLE ─────────────────────────────────────────────────────────
 --[[
-    A read-only display box with a title and a description.
-    Height adjusts automatically based on description length.
+  On/off switch. Fires callback(state) — state is true or false.
 
-    ElementManager:CreateParagraph(container, title, description)
+  ElementManager:CreateToggle(container, title, description, callback)
+  ElementManager:CreateToggle(container, title, description, callback, config)
 
-    Returns → API table:
-      api.Frame → the Frame instance
-    No callback, no config options, no SetValue.
+  config (optional):
+    OnColor  → Color3 — background when ON   (default: green)
+    OffColor → Color3 — background when OFF  (default: grey)
+    DotColor → Color3 — the sliding dot      (default: white)
+
+  Returns → { Frame, .Value, :SetValue(bool), :OnChanged(fn) }
 ]]
 
-local myParagraph = AequorUI.ElementManager:CreateParagraph(container1,
-    "Welcome to AequorUI",
-    "This is a paragraph element. Use it for announcements, patch notes, " ..
-    "or any long-form text. The frame height adjusts automatically."
-)
-
--- Access the frame if needed:
--- myParagraph.Frame.Visible = false
-
-
--- ─── 3c. CLIPBOARD ──────────────────────────────────────────────────────────
---[[
-    A clickable button that copies a string to the user's clipboard.
-    Requires the executor to support setclipboard().
-
-    ElementManager:CreateClipboard(container, title, description, textToCopy)
-
-    Returns → API table:
-      api.Frame → the TextButton instance
-    No callback, no config options, no SetValue.
-]]
-
-local myClipboard = AequorUI.ElementManager:CreateClipboard(container1,
-    "Discord Invite",
-    "Click to copy the Discord server link to your clipboard.",
-    "https://discord.gg/example"
-)
-
-
--- ─── 3d. TOGGLE ─────────────────────────────────────────────────────────────
---[[
-    An on/off switch. Fires callback(state) where state is true or false.
-
-    ElementManager:CreateToggle(container, title, description, callback)
-    ElementManager:CreateToggle(container, title, description, callback, config)
-
-    config (optional table):
-      OnColor  → Color3 — toggle background color when ON  (default: green)
-      OffColor → Color3 — toggle background color when OFF (default: grey)
-      DotColor → Color3 — the sliding dot color            (default: white)
-
-    Returns → API table:
-      api.Frame             → the Frame instance
-      api.Value             → current boolean state (true/false)
-      api:SetValue(bool)    → programmatically set the toggle on or off,
-                              updates the visual AND fires all callbacks
-      api:OnChanged(cb)     → registers an additional callback(state)
-]]
-
--- Default style:
+-- default
 local aimbotToggle = AequorUI.ElementManager:CreateToggle(container1,
     "Aimbot",
-    "Enables automatic target tracking.",
-    function(state)
-        print("Aimbot:", state)
-    end
+    "Automatic target locking.",
+    function(state) print("Aimbot:", state) end
 )
 
--- Read current value:
-print("Aimbot is currently:", aimbotToggle.Value)
+aimbotToggle:SetValue(true)           -- turn on at startup (e.g. load saved config)
+print("Aimbot:", aimbotToggle.Value)  -- read current value
 
--- Programmatically turn it on:
-aimbotToggle:SetValue(true)
-
--- Register an extra listener:
 aimbotToggle:OnChanged(function(state)
-    print("Aimbot changed (extra listener):", state)
+    print("Aimbot extra listener:", state)
 end)
 
--- Custom colors:
-local espToggle = AequorUI.ElementManager:CreateToggle(container1,
-    "ESP",
-    "Shows player outlines through walls.",
-    function(state)
-        print("ESP:", state)
-    end,
+-- custom colors
+AequorUI.ElementManager:CreateToggle(container1,
+    "Speed Hack",
+    "Custom colored toggle example.",
+    function(state) print("Speed Hack:", state) end,
     {
-        OnColor  = Color3.fromRGB(255, 80, 0),
-        OffColor = Color3.fromRGB(40, 40, 40),
+        OnColor  = Color3.fromRGB(255, 100, 0),
+        OffColor = Color3.fromRGB(60, 60, 60),
         DotColor = Color3.fromRGB(255, 255, 255),
     }
 )
 
--- Programmatically turn ESP off without user interaction:
--- espToggle:SetValue(false)
+AequorUI.ElementManager:CreateToggle(container2,
+    "Notifications",
+    "Enable or disable notifications.",
+    function(state) print("Notifications:", state) end
+)
 
 
--- ─── 3e. SLIDER ─────────────────────────────────────────────────────────────
+-- ── SLIDER ─────────────────────────────────────────────────────────
 --[[
-    A draggable slider that returns integer values. Fires callback(value).
+  Draggable slider, returns integer values. Fires callback(value).
 
-    ElementManager:CreateSlider(container, title, description, min, max, default, callback)
-    ElementManager:CreateSlider(container, title, description, min, max, default, callback, config)
+  ElementManager:CreateSlider(container, title, description, min, max, default, callback)
+  ElementManager:CreateSlider(container, title, description, min, max, default, callback, config)
 
-    config (optional table):
-      TrackColor → Color3 — the full background track color   (default: dark grey)
-      FillColor  → Color3 — the filled/active portion color   (default: theme SelectionColor)
-      DotColor   → Color3 — the draggable handle dot color    (default: white)
+  config (optional):
+    TrackColor → Color3 — full track background  (default: dark grey)
+    FillColor  → Color3 — filled portion color   (default: theme SelectionColor)
+    DotColor   → Color3 — draggable handle       (default: white)
 
-    Returns → API table:
-      api.Frame             → the Frame instance
-      api.Value             → current number value
-      api:SetValue(number)  → programmatically set the slider to a value,
-                              clamps to [min, max], updates the visual AND fires all callbacks
-      api:OnChanged(cb)     → registers an additional callback(value)
+  Returns → { Frame, .Value, :SetValue(number), :OnChanged(fn) }
+  :SetValue() clamps to [min, max].
 ]]
 
--- Default style:
+-- default
 local speedSlider = AequorUI.ElementManager:CreateSlider(container1,
     "Walk Speed",
-    "Adjusts the character's walk speed.",
-    0, 500, 16,
-    function(value)
-        print("WalkSpeed:", value)
-        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-        if hum then hum.WalkSpeed = value end
+    "Adjust movement speed.",
+    0, 100, 16,
+    function(val)
+        print("Walk Speed:", val)
+        local char = game.Players.LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.WalkSpeed = val
+        end
     end
 )
 
--- Read current value:
-print("Current speed:", speedSlider.Value)
+speedSlider:SetValue(32)               -- set programmatically
+print("Speed:", speedSlider.Value)     -- read current value
 
--- Programmatically reset to default:
-speedSlider:SetValue(16)
-
--- Register an extra listener:
-speedSlider:OnChanged(function(value)
-    print("Speed changed (extra listener):", value)
-end)
-
--- Custom colors:
+-- custom colors
 local jumpSlider = AequorUI.ElementManager:CreateSlider(container1,
     "Jump Power",
-    "Adjusts the character's jump height.",
-    0, 500, 50,
-    function(value)
-        print("JumpPower:", value)
-        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-        if hum then hum.JumpPower = value end
+    "Adjust jump height.",
+    0, 200, 50,
+    function(val)
+        print("Jump Power:", val)
+        local char = game.Players.LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.JumpPower = val
+        end
     end,
     {
-        TrackColor = Color3.fromRGB(30, 30, 30),
-        FillColor  = Color3.fromRGB(255, 60, 60),
-        DotColor   = Color3.fromRGB(255, 255, 255),
+        TrackColor = Color3.fromRGB(40, 40, 40),
+        FillColor  = Color3.fromRGB(255, 80, 80),
+        DotColor   = Color3.fromRGB(50, 2, 200),
     }
 )
 
-
--- ─── 3f. DROPDOWN ───────────────────────────────────────────────────────────
---[[
-    A clickable dropdown menu. Fires callback(selected) with the chosen string.
-    The dropdown panel opens centered on the button and closes on selection
-    or when clicking outside.
-
-    ElementManager:CreateDropdown(container, title, description, options, default, callback)
-    ElementManager:CreateDropdown(container, title, description, options, default, callback, config)
-
-    options → table of strings — the selectable options
-    default → string           — the initially selected option
-
-    config (optional table):
-      SelectionBarColor → Color3 — the small vertical bar beside the active option
-                                   (default: theme SelectionColor)
-      GlowColor         → Color3 — the glow highlight on the active option
-                                   (default: white)
-
-    Returns → API table:
-      api.Frame             → the Frame instance
-      api.Value             → currently selected option string
-      api:SetValue(string)  → programmatically select an option,
-                              updates the visual AND fires all callbacks.
-                              Does nothing if the value is not in the options list.
-      api:OnChanged(cb)     → registers an additional callback(selected)
-]]
-
--- Default style:
-local themeDropdown = AequorUI.ElementManager:CreateDropdown(container1,
-    "Theme",
-    "Switch the UI theme.",
-    {"Aqua", "Violet", "Smoke", "Scarlet", "Lemon", "Light", "Rose"},
-    "Aqua",
-    function(selected)
-        print("Theme:", selected)
-        AequorUI.ThemeManager:SetTheme(selected, mainFrame)
-    end
-)
-
--- Read current value:
-print("Current theme:", themeDropdown.Value)
-
--- Programmatically switch theme:
-themeDropdown:SetValue("Violet")
-
--- Register an extra listener:
-themeDropdown:OnChanged(function(selected)
-    print("Theme changed (extra listener):", selected)
+jumpSlider:OnChanged(function(val)
+    print("Jump Power extra listener:", val)
 end)
 
--- Custom colors:
-local weaponDropdown = AequorUI.ElementManager:CreateDropdown(container1,
+AequorUI.ElementManager:CreateSlider(container2,
+    "UI Scale",
+    "Adjust interface size.",
+    50, 150, 100,
+    function(val) print("UI Scale:", val) end
+)
+
+
+-- ── DROPDOWN ───────────────────────────────────────────────────────
+--[[
+  Dropdown menu. Fires callback(selected) with the chosen string.
+  Panel opens centered, closes on selection or outside click.
+
+  ElementManager:CreateDropdown(container, title, description, options, default, callback)
+  ElementManager:CreateDropdown(container, title, description, options, default, callback, config)
+
+  config (optional):
+    SelectionBarColor → Color3 — small bar beside active option
+    GlowColor         → Color3 — glow on active option
+
+  Returns → { Frame, .Value, :SetValue(string), :OnChanged(fn) }
+  :SetValue() does nothing if the value is not in the options list.
+]]
+
+-- default
+local weaponDrop = AequorUI.ElementManager:CreateDropdown(container1,
     "Weapon",
-    "Select your active weapon.",
+    "Select your weapon.",
     {"Sword", "Bow", "Staff", "Dagger", "Axe"},
     "Sword",
-    function(selected)
-        print("Weapon:", selected)
-    end,
+    function(sel) print("Weapon:", sel) end
+)
+
+weaponDrop:SetValue("Axe")             -- set programmatically
+print("Weapon:", weaponDrop.Value)     -- read current value
+
+-- custom colors
+local elementDrop = AequorUI.ElementManager:CreateDropdown(container1,
+    "Element",
+    "Select your element.",
+    {"Fire", "Water", "Earth", "Air", "Lightning"},
+    "Fire",
+    function(sel) print("Element:", sel) end,
     {
         SelectionBarColor = Color3.fromRGB(255, 50, 50),
         GlowColor         = Color3.fromRGB(255, 200, 0),
     }
 )
 
--- Programmatically switch weapon:
--- weaponDropdown:SetValue("Bow")
+elementDrop:OnChanged(function(sel)
+    print("Element extra listener:", sel)
+end)
+
+-- live theme switcher using dropdown
+AequorUI.ElementManager:CreateDropdown(container2,
+    "Theme",
+    "Switch the UI theme live.",
+    {"Aqua", "Violet", "Smoke", "Scarlet", "Lemon", "Light", "Rose"},
+    "Aqua",
+    function(sel)
+        AequorUI.ThemeManager:SetTheme(sel, mainFrame)
+    end
+)
 
 
--- ─── 3g. COLOR PICKER ───────────────────────────────────────────────────────
+-- ── COLOR PICKER ───────────────────────────────────────────────────
 --[[
-    A full HSV color picker panel. Opens when the preview box is clicked.
-    Has Done and Cancel buttons.
-    Callback fires only when Done is pressed. Cancel reverts to the last confirmed color.
+  Full HSV color picker. Opens on preview box click.
+  Has Done and Cancel buttons.
+  Callback fires only on Done. Cancel reverts to last confirmed color.
+  No config — panel style follows the active theme automatically.
 
-    ElementManager:CreateColorPicker(container, title, description, defaultColor, callback)
-
-    defaultColor → Color3             — the starting color shown in the preview box
-    callback     → function(Color3)   — receives the chosen color when Done is pressed
-
-    Returns → API table:
-      api.Frame             → the Frame instance
-      api.Value             → current confirmed Color3
-      api:SetValue(Color3)  → programmatically set the color,
-                              updates the preview box AND fires all callbacks
-      api:OnChanged(cb)     → registers an additional callback(Color3)
-
-    No config options — the panel style follows the active theme automatically.
+  ElementManager:CreateColorPicker(container, title, description, defaultColor, callback)
+  Returns → { Frame, .Value, :SetValue(Color3), :OnChanged(fn) }
 ]]
 
 local espColor = AequorUI.ElementManager:CreateColorPicker(container1,
     "ESP Color",
-    "Choose the color for player ESP boxes.",
-    Color3.fromRGB(255, 0, 0),
-    function(color)
-        print("ESP Color:", color)
-    end
+    "Select the ESP line color.",
+    Color3.fromRGB(255, 100, 100),
+    function(color) print("ESP Color:", color) end
 )
 
--- Read current value:
+espColor:SetValue(Color3.fromRGB(255, 100, 100))  -- load from saved config
 print("Current ESP color:", espColor.Value)
 
--- Programmatically set color (e.g. load from saved config):
-espColor:SetValue(Color3.fromRGB(0, 255, 128))
-
--- Register an extra listener:
 espColor:OnChanged(function(color)
-    print("ESP Color changed (extra listener):", color)
+    print("ESP Color extra listener:", color)
 end)
 
-AequorUI.ElementManager:CreateColorPicker(container1,
-    "Chams Color",
-    "Choose the color for player chams.",
-    Color3.fromRGB(0, 150, 255),
-    function(color)
-        print("Chams Color:", color)
-    end
-)
 
-
--- ─── 3h. ADD CONTAINER ──────────────────────────────────────────────────────
+-- ── ADD CONTAINER ──────────────────────────────────────────────────
 --[[
-    A plain styled frame with a title and a description.
-    Has a built-in smooth hover animation (transparency shift + cursor change).
-    Useful for info rows, custom sections, or as a base to parent extra children.
+  A plain styled frame with title + description.
+  Has a smooth hover animation (transparency shift + pointer cursor).
+  Useful for custom rows or grouping content.
+  Returns a raw Frame (not an API table) — parent children directly to it.
 
-    AequorUI.AddContainer(container, title, description)
-
-    Returns → Frame  (raw Frame, not an API table — you can parent extra instances to it)
+  AequorUI.AddContainer(container, title, description)  →  Frame
 ]]
 
 local myRow = AequorUI.AddContainer(container1,
     "Custom Row",
-    "This is a plain hover-animated container. You can parent extra instances to it."
+    "Hover-animated container. Parent extra instances to it."
 )
-
--- Example: adding something inside the returned frame
--- local label = Instance.new("TextLabel")
--- label.Parent = myRow
+-- local lbl = Instance.new("TextLabel")
+-- lbl.Parent = myRow
 
 
--- ════════════════════════════════════════════════════════════════
---  SECTION 4 — THEME MANAGER  (ThemeManager)
--- ════════════════════════════════════════════════════════════════
+-- ══════════════════════════════════════════
+--  THEME MANAGER
+-- ══════════════════════════════════════════
 
--- ─── 4a. SET BUILT-IN THEME ─────────────────────────────────────────────────
+-- ── SET THEME ──────────────────────────────────────────────────────
 --[[
-    Applies a full theme to the entire UI including all registered elements.
-    Built-in themes:
-      "Aqua"    "Violet"  "Smoke"   "Scarlet"
-      "Lemon"   "Light"   "Rose"    "Custom"
-
-    ThemeManager:SetTheme(themeName, mainFrame)
+  ThemeManager:SetTheme(themeName, mainFrame)
+  Applies a full theme to the whole UI.
 ]]
 
 AequorUI.ThemeManager:SetTheme("Aqua", mainFrame)
 
 
--- ─── 4b. CREATE A CUSTOM THEME ──────────────────────────────────────────────
+-- ── CUSTOM THEME ───────────────────────────────────────────────────
 --[[
-    Add a new entry to ThemeManager.Themes with your own colors.
-    All fields below are required.
+  Add a key to ThemeManager.Themes, then call SetTheme() with that name.
+  All fields are required.
 
-    Theme properties:
-      MainColor            → Color3  — main background color of the window
-      SelectionColor       → Color3  — color of the selection bar, element strokes,
-                                       scrollbar, and dropdown selection bar
-      GlowColor            → Color3  — glow highlight color behind the active tab
-      BoundaryColor        → Color3  — color of the sidebar + header divider lines
-      BoundaryTransparency → number  — transparency of divider lines (0–1)
-      Transparency         → number  — window background transparency (0 = opaque, 1 = invisible)
-      GradientStart        → Color3  — lighter color at the top of the background gradient
-      GradientEnd          → Color3  — darker color at the bottom of the background gradient
-      TextColor            → Color3  — color of titles and tab labels
-      DescTextColor        → Color3  — color of description text inside elements
-      ClipboardIcon        → string  — rbxassetid for the arrow icon in clipboard elements
-      CustomDecorations    → table   — decorations table (use {} for none,
-                                       or ThemeManager.Decorations to include all)
+  Fields:
+    MainColor            → Color3  — window background
+    SelectionColor       → Color3  — selection bar, strokes, slider fill, scrollbar
+    GlowColor            → Color3  — glow behind active tab
+    BoundaryColor        → Color3  — divider lines
+    BoundaryTransparency → number  — divider transparency (0–1)
+    Transparency         → number  — window transparency (0=opaque)
+    GradientStart        → Color3  — top of background gradient
+    GradientEnd          → Color3  — bottom of background gradient
+    TextColor            → Color3  — titles
+    DescTextColor        → Color3  — descriptions
+    ClipboardIcon        → string  — rbxassetid for clipboard arrow icon
+    CustomDecorations    → table   — {} for none, or ThemeManager.Decorations
 ]]
 
 AequorUI.ThemeManager.Themes["Midnight"] = {
@@ -522,304 +452,152 @@ AequorUI.ThemeManager.Themes["Midnight"] = {
     ClipboardIcon        = "rbxassetid://106330002535278",
     CustomDecorations    = {},
 }
+-- AequorUI.ThemeManager:SetTheme("Midnight", mainFrame)
 
-AequorUI.ThemeManager:SetTheme("Midnight", mainFrame)
 
-
--- ─── 4c. DECORATIONS ────────────────────────────────────────────────────────
+-- ── DECORATIONS ────────────────────────────────────────────────────
 --[[
-    Decorations are ImageLabels rendered on the edges of the main window.
-    They are defined in ThemeManager.Decorations and created automatically
-    when GeneralUI:CreateMain() is called.
+  ImageLabels rendered on window edges. Must be defined BEFORE CreateMain().
+  Built-ins: "LeftWing", "RightWing"
 
-    Built-in decorations: "LeftWing", "RightWing"
+  Fields:
+    AssetId      → string  — rbxassetid://
+    Position     → UDim2   — relative to MainFrame
+    Size         → UDim2
+    Transparency → number  — 0=visible, 1=hidden
+    Rotation     → number  — degrees
+    ZIndex       → number  — negative = behind the window
+    Color        → Color3  — image tint (optional)
 
-    Each decoration supports these fields:
-      AssetId      → string  — rbxassetid:// of the image to display
-      Position     → UDim2   — position relative to MainFrame
-      Size         → UDim2   — size of the image
-      Transparency → number  — image transparency (0 = visible, 1 = hidden)
-      Rotation     → number  — rotation in degrees
-      ZIndex       → number  — render order (negative values go behind the window)
-      Color        → Color3  — tint color applied to the image (optional)
-
-    Note: Decorations must be set BEFORE calling GeneralUI:CreateMain()
-          because they are instantiated during window creation.
+  Assign to a custom theme:
+    AequorUI.ThemeManager.Themes["Midnight"].CustomDecorations = AequorUI.ThemeManager.Decorations
 ]]
 
-AequorUI.ThemeManager.Decorations["LeftWing"] = {
-    AssetId      = "rbxassetid://128923622323769",
-    Position     = UDim2.new(0, -120, 0.5, -60),
-    Size         = UDim2.new(0, 120, 0, 120),
-    Transparency = 0.3,
-    Rotation     = 0,
-    ZIndex       = -1,
-    Color        = Color3.fromRGB(180, 140, 255),
-}
-
-AequorUI.ThemeManager.Decorations["TopGlow"] = {
-    AssetId      = "rbxassetid://128923622323769",
-    Position     = UDim2.new(0.5, -75, 0, -40),
-    Size         = UDim2.new(0, 150, 0, 80),
-    Transparency = 0.5,
-    Rotation     = 180,
-    ZIndex       = -1,
-    Color        = Color3.fromRGB(100, 200, 255),
-}
-
-AequorUI.ThemeManager.Themes["Midnight"].CustomDecorations = AequorUI.ThemeManager.Decorations
+-- Example (define BEFORE CreateMain):
+-- AequorUI.ThemeManager.Decorations["TopGlow"] = {
+--     AssetId      = "rbxassetid://128923622323769",
+--     Position     = UDim2.new(0.5, -75, 0, -40),
+--     Size         = UDim2.new(0, 150, 0, 80),
+--     Transparency = 0.5,
+--     Rotation     = 180,
+--     ZIndex       = -1,
+--     Color        = Color3.fromRGB(100, 200, 255),
+-- }
 
 
--- ─── 4d. SET TRANSPARENCY ───────────────────────────────────────────────────
+-- ── TRANSPARENCY ───────────────────────────────────────────────────
 --[[
-    Controls the main window background transparency.
-      0   = fully opaque
-      0.3 = recommended default
-      1   = fully invisible (avoid)
-
-    ThemeManager:SetTransparency(value, mainFrame)
+  ThemeManager:SetTransparency(value, mainFrame)
+  0 = opaque, 0.3 = recommended default, 1 = invisible.
 ]]
 
 AequorUI.ThemeManager:SetTransparency(0.3, mainFrame)
 
 
--- ─── 4e. SET ACRYLIC ────────────────────────────────────────────────────────
+-- ── ACRYLIC ────────────────────────────────────────────────────────
 --[[
-    Toggles an acrylic/frosted glass overlay behind the window.
-      true  = overlay ON
-      false = overlay OFF
-
-    ThemeManager:SetAcrylic(enabled, screenGui)
+  ThemeManager:SetAcrylic(enabled, screenGui)
+  Toggles a frosted glass overlay behind the window.
 ]]
 
 AequorUI.ThemeManager:SetAcrylic(false, screenGui)
 
 
--- ─── 4f. SET COMPONENT COLOR ────────────────────────────────────────────────
+-- ── SET COMPONENT COLOR ────────────────────────────────────────────
 --[[
-    Changes the color of a specific group of UI components.
+  ThemeManager:SetComponentColor(category, Color3, {objects})
 
-    ThemeManager:SetComponentColor(category, Color3, {objects})
-
-    Categories:
-    ┌─────────────┬──────────────────────────────────────────────────────────┐
-    │ "Selection" │ The small bar that slides next to the active tab.        │
-    │             │ Also used as the default color for element strokes,      │
-    │             │ slider fills, and scrollbars.                            │
-    │             │ Pass: { myTabs.SelectionBar }                            │
-    ├─────────────┼──────────────────────────────────────────────────────────┤
-    │ "Glow"      │ The soft highlight frame that appears behind the active  │
-    │             │ tab button.                                              │
-    │             │ Pass: { tab1:WaitForChild("Glow"), tab2:... }            │
-    ├─────────────┼──────────────────────────────────────────────────────────┤
-    │ "Boundary"  │ The vertical line separating the sidebar from content,  │
-    │             │ and the horizontal line below the drag handle.           │
-    │             │ Pass: { myTabs.BoundaryLine, divider }                  │
-    └─────────────┴──────────────────────────────────────────────────────────┘
+  "Selection" → sliding tab bar        → { myTabs.SelectionBar }
+  "Glow"      → active tab glow        → { tab1:WaitForChild("Glow"), ... }
+  "Boundary"  → sidebar/header dividers → { myTabs.BoundaryLine, divider }
 ]]
 
-AequorUI.ThemeManager:SetComponentColor(
-    "Selection",
-    Color3.fromRGB(100, 200, 255),
-    { myTabs.SelectionBar }
-)
-
-AequorUI.ThemeManager:SetComponentColor(
-    "Glow",
-    Color3.fromRGB(80, 220, 255),
-    {
-        tab1:WaitForChild("Glow"),
-        tab2:WaitForChild("Glow"),
-        tab3:WaitForChild("Glow"),
-        tab4:WaitForChild("Glow"),
-    }
-)
-
-AequorUI.ThemeManager:SetComponentColor(
-    "Boundary",
-    Color3.fromRGB(255, 255, 255),
-    { myTabs.BoundaryLine, divider }
-)
+AequorUI.ThemeManager:SetComponentColor("Selection", Color3.fromRGB(255, 255, 255), { myTabs.SelectionBar })
+AequorUI.ThemeManager:SetComponentColor("Boundary",  Color3.fromRGB(255, 255, 255), { myTabs.BoundaryLine, divider })
+AequorUI.ThemeManager:SetComponentColor("Glow",      Color3.fromRGB(255, 255, 255), {
+    tab1:WaitForChild("Glow"),
+    tab2:WaitForChild("Glow"),
+    tab3:WaitForChild("Glow"),
+    tab4:WaitForChild("Glow"),
+})
 
 
--- ─── 4g. SET COMPONENT TRANSPARENCY ────────────────────────────────────────
+-- ── SET COMPONENT TRANSPARENCY ─────────────────────────────────────
 --[[
-    Changes the transparency of a specific group of UI components.
-
-    ThemeManager:SetComponentTransparency(category, value, {objects})
-      value → 0 = fully visible, 1 = fully invisible
-
-    Currently supported category: "Boundary"
+  ThemeManager:SetComponentTransparency(category, value, {objects})
+  Currently only "Boundary" is supported. 0=visible, 1=invisible.
 ]]
 
-AequorUI.ThemeManager:SetComponentTransparency(
-    "Boundary",
-    0.8,
-    { myTabs.BoundaryLine, divider }
-)
+AequorUI.ThemeManager:SetComponentTransparency("Boundary", 0.8, { myTabs.BoundaryLine, divider })
 
 
--- ─── 4h. GET THEME ──────────────────────────────────────────────────────────
+-- ── GET THEME ──────────────────────────────────────────────────────
 --[[
-    Returns the full theme data table for the given theme name.
-    Useful for reading colors to apply manually elsewhere.
-
-    ThemeManager:GetTheme(themeName)  → table
-    If name is nil, returns the currently active theme.
+  ThemeManager:GetTheme(name)  → returns full theme data table
+  ThemeManager:GetTheme()      → returns currently active theme
 ]]
 
-local currentTheme = AequorUI.ThemeManager:GetTheme()
-print("Main color:", currentTheme.MainColor)
-print("Selection color:", currentTheme.SelectionColor)
+local current = AequorUI.ThemeManager:GetTheme()
+print("Active SelectionColor:", current.SelectionColor)
 
-local aquaTheme = AequorUI.ThemeManager:GetTheme("Aqua")
-print("Aqua gradient start:", aquaTheme.GradientStart)
+local aqua = AequorUI.ThemeManager:GetTheme("Aqua")
+print("Aqua GradientStart:", aqua.GradientStart)
 
 
--- ════════════════════════════════════════════════════════════════
---  SECTION 5 — ICON MANAGER  (IconManager)
--- ════════════════════════════════════════════════════════════════
+-- ══════════════════════════════════════════
+--  ICON MANAGER
+-- ══════════════════════════════════════════
 
--- ─── 5a. SET ICON COLOR ─────────────────────────────────────────────────────
+-- ── SET ICON COLOR ─────────────────────────────────────────────────
 --[[
-    Changes the ImageColor3 of a list of Icon ImageLabels.
-    Also updates IconManager.DefaultIconColor, which is applied to
-    new icons created after this call.
+  Sets ImageColor3 on tab Icon ImageLabels.
+  Also updates IconManager.DefaultIconColor for future icons.
 
-    IconManager:SetIconColor(Color3, {iconObjects})
+  IconManager:SetIconColor(Color3, {icons})
 ]]
 
-AequorUI.IconManager:SetIconColor(
-    Color3.fromRGB(255, 255, 255),
-    {
-        tab1:WaitForChild("Icon"),
-        tab2:WaitForChild("Icon"),
-        tab3:WaitForChild("Icon"),
-        tab4:WaitForChild("Icon"),
-    }
-)
+AequorUI.IconManager:SetIconColor(Color3.fromRGB(255, 255, 255), {
+    tab1:WaitForChild("Icon"),
+    tab2:WaitForChild("Icon"),
+    tab3:WaitForChild("Icon"),
+    tab4:WaitForChild("Icon"),
+})
 
 
--- ─── 5b. ADD CUSTOM ICON ────────────────────────────────────────────────────
+-- ── ADD CUSTOM ICON ────────────────────────────────────────────────
 --[[
-    Registers a custom icon so it can be referenced by name in CreateTab().
+  Registers a custom icon name for use in CreateTab().
 
-    IconManager:AddCustomIcon(name, assetId)
-      name    → string — the key you'll pass as iconName in CreateTab()
-      assetId → string — full "rbxassetid://..." string
+  IconManager:AddCustomIcon(name, assetId)
 
-    Built-in icon keys for reference:
-      "Home"      "Settings"  "Search"   "Target"
-      "Combat"    "Movement"  "Eyes"     "Human"   "Humans"
+  Built-in names: "Home" | "Settings" | "Search" | "Target"
+                  "Combat" | "Movement" | "Eyes" | "Human" | "Humans"
 ]]
 
 AequorUI.IconManager:AddCustomIcon("Star",   "rbxassetid://111111111111")
 AequorUI.IconManager:AddCustomIcon("Shield", "rbxassetid://222222222222")
 
--- Use your custom icon in a tab:
 -- local tab5, container5 = myTabs:CreateTab("Extra", "Star", 5)
 
 
--- ─── 5c. GET ICON ───────────────────────────────────────────────────────────
+-- ── GET ICON ───────────────────────────────────────────────────────
 --[[
-    Returns the assetId string for a given icon name.
-    Checks CustomIcons first, then falls back to the built-in Library.
-    Returns "" if the icon is not found.
-
-    IconManager:GetIcon(name) → string
+  IconManager:GetIcon(name)  → returns assetId string
+  Checks custom icons first, then built-ins. Returns "" if not found.
 ]]
 
-print("Star icon:",    AequorUI.IconManager:GetIcon("Star"))
 print("Home icon:",    AequorUI.IconManager:GetIcon("Home"))
-print("Missing icon:", AequorUI.IconManager:GetIcon("DoesNotExist"))  -- prints ""
+print("Star icon:",    AequorUI.IconManager:GetIcon("Star"))
+print("Missing:",      AequorUI.IconManager:GetIcon("DoesNotExist"))  -- ""
 
 
--- ─── 5d. DEFAULT ICON COLOR ─────────────────────────────────────────────────
+-- ── DEFAULT ICON COLOR ─────────────────────────────────────────────
 --[[
-    IconManager.DefaultIconColor stores the color applied to icons by default.
-    It is updated automatically when you call SetIconColor().
-    You can also set it directly if needed.
+  IconManager.DefaultIconColor → fallback color applied to new icons.
+  Updated automatically by SetIconColor(), or set directly.
 ]]
 
-AequorUI.IconManager.DefaultIconColor = Color3.fromRGB(200, 200, 200)
+-- AequorUI.IconManager.DefaultIconColor = Color3.fromRGB(200, 200, 200)
 
 
--- ════════════════════════════════════════════════════════════════
---  SECTION 6 — FULL SETUP EXAMPLE
--- ════════════════════════════════════════════════════════════════
--- A minimal but complete real-world example showing recommended
--- setup order, including the new API (SetValue, OnChanged, Value).
-
---[[
-
-local AequorUI = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/hnwiie/AequorUI/refs/heads/main/main.lua", true
-))()
-
--- 1. Create window
-local screenGui = AequorUI.GeneralUI:CreateMain(Enum.KeyCode.RightBracket, "Aqua")
-local mainFrame = screenGui:WaitForChild("MainFrame")
-local divider   = mainFrame:WaitForChild("Divider")
-
--- 2. Create tabs
-local myTabs = AequorUI.TabManager:Init(mainFrame)
-local tab1, container1 = myTabs:CreateTab("Home",   "Home",   1)
-local tab2, container2 = myTabs:CreateTab("Combat", "Combat", 2)
-
--- 3. Add elements
-
--- Button
-local myBtn = AequorUI.ElementManager:CreateButton(container1, "Rejoin", "Rejoins the server.", function()
-    game:GetService("TeleportService"):Teleport(game.PlaceId)
-end)
-myBtn:OnChanged(function() print("Also fired!") end)
-
--- Toggle with SetValue (e.g. load saved config)
-local aimbotToggle = AequorUI.ElementManager:CreateToggle(container1, "Aimbot", "Enable aimbot.", function(state)
-    print("Aimbot:", state)
-end)
-aimbotToggle:SetValue(true)   -- turn on at startup
-aimbotToggle:OnChanged(function(state) print("Extra listener:", state) end)
-
--- Slider with SetValue
-local fovSlider = AequorUI.ElementManager:CreateSlider(container1, "FOV", "Set FOV size.", 1, 360, 90, function(val)
-    print("FOV:", val)
-end)
-fovSlider:SetValue(120)
-print("FOV is:", fovSlider.Value)
-
--- Dropdown with SetValue
-local modeDropdown = AequorUI.ElementManager:CreateDropdown(container1, "Mode", "Select mode.",
-    {"Silent", "Legit", "Rage"}, "Legit", function(sel)
-    print("Mode:", sel)
-end)
-modeDropdown:SetValue("Rage")
-print("Mode is:", modeDropdown.Value)
-
--- Color picker with SetValue
-local espColor = AequorUI.ElementManager:CreateColorPicker(container1, "ESP Color", "Pick ESP color.",
-    Color3.fromRGB(255, 0, 0), function(color)
-    print("Color:", color)
-end)
-espColor:SetValue(Color3.fromRGB(0, 255, 0))  -- load green from saved config
-print("Color is:", espColor.Value)
-
--- 4. Apply theme
-AequorUI.ThemeManager:SetTheme("Aqua", mainFrame)
-AequorUI.ThemeManager:SetTransparency(0.3, mainFrame)
-AequorUI.ThemeManager:SetAcrylic(false, screenGui)
-
-AequorUI.ThemeManager:SetComponentColor("Selection", Color3.fromRGB(100, 200, 255), { myTabs.SelectionBar })
-AequorUI.ThemeManager:SetComponentColor("Boundary",  Color3.fromRGB(255, 255, 255), { myTabs.BoundaryLine, divider })
-AequorUI.ThemeManager:SetComponentColor("Glow",      Color3.fromRGB(80, 220, 255),  { tab1:WaitForChild("Glow"), tab2:WaitForChild("Glow") })
-AequorUI.ThemeManager:SetComponentTransparency("Boundary", 0.8, { myTabs.BoundaryLine, divider })
-
--- 5. Set icon colors
-AequorUI.IconManager:SetIconColor(Color3.fromRGB(255, 255, 255), {
-    tab1:WaitForChild("Icon"),
-    tab2:WaitForChild("Icon"),
-})
-
-]]
-
-print("AequorUI Example.lua loaded successfully!")
+print("AequorUI loaded.")
