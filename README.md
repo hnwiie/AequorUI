@@ -29,7 +29,6 @@ Fully configurable position, size, rotation, transparency and tint color.
 
 **Icon Manager** — 9 built-in icons and Custom Icon support.
 
-Add your own custom icons via `AddCustomIcon`.
 ---
 ## Quick Example
 ```lua
