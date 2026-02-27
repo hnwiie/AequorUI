@@ -1,6 +1,6 @@
 ![AequorUI Banner](Assets/banner.png)
 # AequorUI
-A modern and clean Roblox UI library that works stably even with weak executors and bypasses powerful anti-cheats.
+A modern and clean Roblox interface suit that works stably even with weak executors and bypasses powerful anti-cheats.
 ---
 ## Load
 ```lua
